@@ -8,6 +8,13 @@ import type { CollectionCard, RiftboundExtension } from './models/card.model';
 
 type CollectionFilter = 'all' | 'owned' | 'missing';
 
+interface CardTypeFilter {
+  id: string;
+  label: string;
+  cardType?: string;
+  championUnits?: boolean;
+}
+
 @Component({
   selector: 'app-root',
   imports: [CommonModule, FormsModule, HlmButtonImports],
@@ -19,6 +26,7 @@ export class App implements OnInit {
   protected readonly auth = inject(SupabaseAuthService);
   protected readonly activeExtension = signal('all');
   protected readonly activeFilter = signal<CollectionFilter>('all');
+  protected readonly activeCardType = signal('all');
   protected readonly searchTerm = signal('');
   protected readonly authMode = signal<'login' | 'signup'>('login');
   protected readonly email = signal('');
@@ -44,6 +52,44 @@ export class App implements OnInit {
     return [...summary.values()];
   });
 
+  protected readonly cardTypeFilters = computed<CardTypeFilter[]>(() => {
+    const cards = this.collection.cards();
+    const types = new Set(cards.map((card) => card.cardType.trim()).filter(Boolean));
+    const filters: CardTypeFilter[] = [{ id: 'all', label: 'Tous les types' }];
+    const addType = (match: RegExp, label: string) => {
+      const cardType = [...types].find((type) => match.test(type));
+      if (cardType) {
+        filters.push({ id: `type:${cardType.toLocaleLowerCase('en')}`, label, cardType });
+        types.delete(cardType);
+      }
+    };
+
+    addType(/^legend(s)?$/i, 'Legends');
+    addType(/^spell(s)?$/i, 'Sorts');
+
+    const hasChampionUnits = cards.some((card) => this.isChampionUnit(card));
+    const unitType = [...types].find((type) => /^unit(s)?$/i.test(type));
+    if (hasChampionUnits) {
+      filters.push({ id: 'champion-units', label: 'Champion Units', championUnits: true });
+    }
+    if (unitType) {
+      filters.push({ id: `type:${unitType.toLocaleLowerCase('en')}`, label: 'Units', cardType: unitType });
+      types.delete(unitType);
+    }
+
+    addType(/^gear(s)?$/i, 'Gears');
+    for (const cardType of [...types].sort((left, right) => left.localeCompare(right, 'en'))) {
+      if (hasChampionUnits && /^champion\s+units?$/i.test(cardType)) continue;
+      filters.push({
+        id: `type:${cardType.toLocaleLowerCase('en')}`,
+        label: cardType,
+        cardType,
+      });
+    }
+
+    return filters;
+  });
+
   protected readonly ownedUniqueCount = computed(
     () => this.collection.cards().filter((card) => card.quantity > 0).length,
   );
@@ -58,11 +104,17 @@ export class App implements OnInit {
   protected readonly visibleCards = computed(() => {
     const extensionCode = this.activeExtension();
     const filter = this.activeFilter();
+    const selectedType = this.cardTypeFilters().find((item) => item.id === this.activeCardType());
     const query = this.searchTerm().trim().toLocaleLowerCase('fr');
 
     return this.collection
       .cards()
       .filter((card) => extensionCode === 'all' || card.setCode === extensionCode)
+      .filter((card) => {
+        if (!selectedType || selectedType.id === 'all') return true;
+        if (selectedType.championUnits) return this.isChampionUnit(card);
+        return card.cardType === selectedType.cardType;
+      })
       .filter((card) => {
         if (filter === 'owned') return card.quantity > 0;
         if (filter === 'missing') return card.quantity === 0;
@@ -155,6 +207,19 @@ export class App implements OnInit {
 
   protected setFilter(filter: CollectionFilter): void {
     this.activeFilter.set(filter);
+  }
+
+  protected setCardTypeFilter(filterId: string): void {
+    this.activeCardType.set(filterId);
+  }
+
+  private isChampionUnit(card: CollectionCard): boolean {
+    const labels = [card.cardType, ...card.cardTypeLabels].map((label) => label.trim());
+    const hasChampion = labels.some((label) => /^champion(s)?$/i.test(label)) ||
+      labels.some((label) => /champion\s+units?/i.test(label));
+    const hasUnit = labels.some((label) => /^units?$/i.test(label)) ||
+      labels.some((label) => /champion\s+units?/i.test(label));
+    return hasChampion && hasUnit;
   }
 
   protected setExtension(extensionCode: string): void {

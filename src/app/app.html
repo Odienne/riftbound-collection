@@ -1,159 +1,108 @@
 <div class="app-shell">
   @if (!auth.isConfigured()) {
     <div class="setup-page">
-      <header class="topbar landing-topbar">
-        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection, accueil">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">riftbound<span>collection</span></span>
+      <header class="topbar">
+        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
         </a>
-        <span class="setup-step">CONFIGURATION REQUISE</span>
+        <span class="setup-step">Configuration requise</span>
       </header>
       <main id="top" class="setup-main">
-        <p class="eyebrow"><span class="eyebrow-line"></span> CONNEXION AU COMPTE</p>
-        <h1>Relier ton espace<br /><em>Supabase.</em></h1>
-        <p class="setup-lead">Ajoute les deux informations publiques du projet pour activer les comptes et les sauvegardes en ligne.</p>
+        <p class="eyebrow">Configuration Supabase</p>
+        <h1>Connexion au compte</h1>
         @if (auth.configurationError()) {
           <p class="error-note" role="alert">{{ auth.configurationError() }}</p>
         }
-        <div class="setup-card">
-          <span class="setup-card-label">FICHIER À RENSEIGNER</span>
-          <code>src/environments/environment.ts</code>
+        <section class="setup-card">
+          <p class="setup-lead">Renseigne les clés du projet dans <code>src/environments/environment.ts</code>, puis exécute la migration dans le SQL Editor de Supabase.</p>
           <ol>
-            <li>Ajoute l’URL du projet Supabase.</li>
-            <li>Ajoute sa clé <strong>publishable</strong> depuis le menu Connect.</li>
-            <li>Exécute ensuite la migration SQL fournie dans le SQL Editor Supabase.</li>
+            <li>URL du projet Supabase.</li>
+            <li>Clé <strong>publishable</strong> du menu Connect.</li>
+            <li>Migration <code>supabase/migrations/202611240001_create_user_collections.sql</code>.</li>
           </ol>
-          <p>La clé publique est prévue pour le navigateur et reste protégée par les règles RLS. N’ajoute jamais une clé <code>secret</code> ou <code>service_role</code> ici.</p>
-        </div>
+          <p class="setup-note">N’ajoute pas de clé <code>secret</code> ou <code>service_role</code> dans le navigateur.</p>
+        </section>
       </main>
     </div>
   } @else if (!auth.isReady()) {
     <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Connexion à Supabase…</p></div>
   } @else if (!auth.user()) {
     <div class="landing-page">
-      <header class="topbar landing-topbar">
-        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection, accueil">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">riftbound<span>collection</span></span>
+      <header class="topbar">
+        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
         </a>
-        <div class="topbar-note"><span class="status-dot"></span> COLLECTION LIÉE À TON COMPTE</div>
       </header>
 
-      <main id="top" class="landing-main">
-        <section class="landing-hero">
-          <div class="landing-copy">
-            <p class="eyebrow"><span class="eyebrow-line"></span> LE CARNET DU COLLECTIONNEUR</p>
-            <h1>Chaque carte<br />a sa <em>place.</em></h1>
-            <p class="landing-description">
-              Connecte-toi pour retrouver ta collection depuis ton compte. Les cartes et leurs quantités sont sauvegardées sur Supabase.
-            </p>
+      <main id="top" class="auth-main">
+        <div class="auth-layout">
+          <!-- Remplacer ce bloc par une image de présentation. -->
+          <div class="image-placeholder auth-image-placeholder" role="img" aria-label="Emplacement pour une image">
+            <span>Image à ajouter</span>
+          </div>
 
-            <div class="auth-card">
-              <div class="auth-mode-switch" role="group" aria-label="Choisir une action">
-                <button type="button" [class.is-active]="authMode() === 'login'" [attr.aria-pressed]="authMode() === 'login'" (click)="setAuthMode('login')">Se connecter</button>
-                <button type="button" [class.is-active]="authMode() === 'signup'" [attr.aria-pressed]="authMode() === 'signup'" (click)="setAuthMode('signup')">Créer un compte</button>
-              </div>
-              <form class="auth-form" (ngSubmit)="submitAuth()">
-                <label>
-                  <span>Adresse e-mail</span>
-                  <input
-                    type="email"
-                    name="email"
-                    autocomplete="email"
-                    placeholder="toi@exemple.com"
-                    required
-                    [ngModel]="email()"
-                    (ngModelChange)="email.set($event)"
-                  />
-                </label>
-                <label>
-                  <span>Mot de passe</span>
-                  <input
-                    type="password"
-                    name="password"
-                    [autocomplete]="authMode() === 'signup' ? 'new-password' : 'current-password'"
-                    placeholder="6 caractères minimum"
-                    minlength="6"
-                    required
-                    [ngModel]="password()"
-                    (ngModelChange)="password.set($event)"
-                  />
-                </label>
-                <button hlmBtn type="submit" class="primary-cta auth-submit" [disabled]="auth.isBusy()">
-                  @if (auth.isBusy()) {
-                    <span class="spinner" aria-hidden="true"></span>
-                    Patiente un instant…
-                  } @else {
-                    {{ authMode() === 'login' ? 'Se connecter' : 'Créer mon compte' }}
-                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" /></svg>
-                  }
-                </button>
-              </form>
-              @if (authError()) { <p class="auth-feedback auth-feedback-error" role="alert">{{ authError() }}</p> }
-              @if (authMessage()) { <p class="auth-feedback auth-feedback-success" role="status">{{ authMessage() }}</p> }
-              <p class="auth-footnote">Ton compte Supabase garde ta collection privée et accessible après reconnexion.</p>
+          <section class="auth-panel" aria-labelledby="auth-title">
+            <h1 id="auth-title">{{ authMode() === 'login' ? 'Connexion' : 'Créer un compte' }}</h1>
+            <div class="auth-mode-switch" role="group" aria-label="Choisir une action">
+              <button type="button" [class.is-active]="authMode() === 'login'" [attr.aria-pressed]="authMode() === 'login'" (click)="setAuthMode('login')">Se connecter</button>
+              <button type="button" [class.is-active]="authMode() === 'signup'" [attr.aria-pressed]="authMode() === 'signup'" (click)="setAuthMode('signup')">Créer un compte</button>
             </div>
-          </div>
-
-          <div class="landing-art" aria-hidden="true">
-            <div class="orbit orbit-one"></div>
-            <div class="orbit orbit-two"></div>
-            <div class="rift-glow"></div>
-            <div class="landing-card landing-card-back">
-              <div class="card-back-glyph">R</div>
-              <span>RIFTBOUND<br />CARD ARCHIVE</span>
-              <div class="card-back-lines"><i></i><i></i><i></i></div>
-            </div>
-            <div class="landing-card landing-card-front">
-              <div class="mini-card-top"><span>COLLECTION PERSONNELLE</span><span>01</span></div>
-              <div class="mini-card-art">
-                <div class="mini-sun"></div>
-                <div class="mini-mountain mountain-one"></div>
-                <div class="mini-mountain mountain-two"></div>
-                <div class="mini-river"></div>
-              </div>
-              <div class="mini-card-bottom"><span>UNE CARTE À LA FOIS</span><b>✦</b></div>
-            </div>
-            <div class="orbit-caption caption-top">TON RYTHME</div>
-            <div class="orbit-caption caption-bottom">TON COMPTE</div>
-          </div>
-        </section>
-
-        <section class="landing-benefits" aria-label="À propos de ta collection">
-          <div class="benefit-item">
-            <span class="benefit-icon" aria-hidden="true">01</span>
-            <div><strong>Toutes les extensions</strong><p>Un catalogue pensé pour Riftbound.</p></div>
-          </div>
-          <div class="benefit-item">
-            <span class="benefit-icon" aria-hidden="true">02</span>
-            <div><strong>Ta progression</strong><p>Un simple + ou − par carte.</p></div>
-          </div>
-          <div class="benefit-item">
-            <span class="benefit-icon" aria-hidden="true">03</span>
-            <div><strong>Sauvegarde en ligne</strong><p>Retrouve-la après reconnexion.</p></div>
-          </div>
-        </section>
-
-        <footer class="landing-footer">
-          <span>RIFTBOUND COLLECTION</span>
-          <span>Catalogue issu du projet communautaire Riftbound Cards</span>
-        </footer>
+            <form class="auth-form" (ngSubmit)="submitAuth()">
+              <label>
+                <span>Adresse e-mail</span>
+                <input
+                  type="email"
+                  name="email"
+                  autocomplete="email"
+                  placeholder="toi@exemple.com"
+                  required
+                  [ngModel]="email()"
+                  (ngModelChange)="email.set($event)"
+                />
+              </label>
+              <label>
+                <span>Mot de passe</span>
+                <input
+                  type="password"
+                  name="password"
+                  [autocomplete]="authMode() === 'signup' ? 'new-password' : 'current-password'"
+                  placeholder="6 caractères minimum"
+                  minlength="6"
+                  required
+                  [ngModel]="password()"
+                  (ngModelChange)="password.set($event)"
+                />
+              </label>
+              <button hlmBtn type="submit" class="primary-cta auth-submit" [disabled]="auth.isBusy()">
+                @if (auth.isBusy()) {
+                  <span class="spinner" aria-hidden="true"></span>
+                  Patiente un instant…
+                } @else {
+                  {{ authMode() === 'login' ? 'Se connecter' : 'Créer mon compte' }}
+                }
+              </button>
+            </form>
+            @if (authError()) { <p class="auth-feedback auth-feedback-error" role="alert">{{ authError() }}</p> }
+            @if (authMessage()) { <p class="auth-feedback auth-feedback-success" role="status">{{ authMessage() }}</p> }
+          </section>
+        </div>
       </main>
     </div>
   } @else if (!collection.hasLoaded()) {
-    <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Chargement de ta collection Supabase…</p></div>
+    <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Chargement de la collection…</p></div>
   } @else if (collection.loadFailed()) {
     <div class="setup-page">
-      <header class="topbar landing-topbar">
-        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection, accueil">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">riftbound<span>collection</span></span>
+      <header class="topbar">
+        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
         </a>
         <button hlmBtn type="button" variant="outline" class="signout-button" (click)="signOut()">Se déconnecter</button>
       </header>
       <main id="top" class="setup-main">
-        <p class="eyebrow"><span class="eyebrow-line"></span> COLLECTION DU COMPTE</p>
-        <h1>Ta collection<br /><em>n’a pas chargé.</em></h1>
+        <h1>Collection indisponible</h1>
         <p class="setup-lead" role="alert">{{ collection.loadError() }}</p>
         <button hlmBtn type="button" class="primary-cta" [disabled]="collection.isLoading()" (click)="retryCollectionLoad()">
           {{ collection.isLoading() ? 'Chargement…' : 'Réessayer' }}
@@ -162,10 +111,10 @@
     </div>
   } @else if (!collection.isStarted()) {
     <div class="landing-page">
-      <header class="topbar landing-topbar">
-        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection, accueil">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">riftbound<span>collection</span></span>
+      <header class="topbar">
+        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
         </a>
         <div class="account-actions">
           <span class="account-email">{{ auth.user()?.email }}</span>
@@ -173,10 +122,13 @@
         </div>
       </header>
       <main id="top" class="start-main">
+        <!-- Remplacer ce bloc par une image liée à l’extension active. -->
+        <div class="image-placeholder start-image-placeholder" role="img" aria-label="Emplacement pour une image">
+          <span>Image à ajouter</span>
+        </div>
         <section class="start-panel">
-          <p class="eyebrow"><span class="eyebrow-line"></span> COMPTE CONNECTÉ</p>
-          <h1>Ta collection<br /><em>commence ici.</em></h1>
-          <p>On va copier le catalogue Riftbound dans ton espace Supabase. Il sera associé à ton compte et tes quantités se sauvegarderont au fil de tes changements.</p>
+          <h1>Ma collection</h1>
+          <p>Le catalogue sera copié dans ton compte.</p>
           @if (collection.loadError()) { <p class="error-note" role="alert">{{ collection.loadError() }}</p> }
           @if (collection.saveError()) { <p class="error-note" role="alert">{{ collection.saveError() }}</p> }
           <button hlmBtn type="button" class="primary-cta" [disabled]="collection.isLoading()" (click)="collection.startCollection()">
@@ -185,23 +137,20 @@
               Chargement des cartes…
             } @else {
               Démarrer ma collection
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" /></svg>
             }
           </button>
-          <p class="privacy-note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8V5.8a4.5 4.5 0 0 1 9 0V8m-10 0h11v9h-11z" /></svg>Une collection par compte, sauvegardée sur Supabase.</p>
         </section>
       </main>
     </div>
   } @else {
     <div class="collection-page">
       <header class="topbar collection-topbar">
-        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection, accueil">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="brand-name">riftbound<span>collection</span></span>
+        <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
         </a>
 
         <div class="collection-actions">
-          <div class="server-badge"><span class="status-dot"></span> COLLECTION LIÉE AU COMPTE</div>
           <span class="save-indicator" [class.save-indicator-saving]="collection.saveState() === 'saving'" [class.save-indicator-error]="collection.saveState() === 'error'" role="status">
             @if (collection.saveState() === 'saving') { Sauvegarde… }
             @else if (collection.saveState() === 'error') { Non sauvegardé }
@@ -221,13 +170,9 @@
 
       <main id="top" class="dashboard-main">
         <section class="dashboard-heading">
-          <div>
-            <p class="eyebrow"><span class="eyebrow-line"></span> JOURNAL DE COLLECTION</p>
-            <h1>Ma collection<span class="heading-period">.</span></h1>
-            <p class="dashboard-subtitle">Chaque exemplaire compte. Continue ta quête.</p>
-          </div>
+          <h1>Ma collection</h1>
           <div class="catalogue-date">
-            <span class="catalogue-date-label">CATALOGUE SYNCHRONISÉ</span>
+            <span class="catalogue-date-label">Catalogue synchronisé</span>
             <strong>{{ collection.snapshot()?.lastSyncedAt | date: 'd MMM yyyy' }}</strong>
           </div>
         </section>
@@ -239,47 +184,28 @@
           </div>
         }
 
-        <section class="overview-panel" aria-label="Résumé de la collection">
-          <div class="overview-copy">
-            <span class="overview-kicker">LA QUÊTE CONTINUE</span>
-            <h2>Carte après carte,<br /><em>la collection se dessine.</em></h2>
-            <p>Les cartes manquantes restent à portée de vue. Les prochaines trouvailles n’attendent que toi.</p>
+        <section class="collection-summary" aria-label="Résumé de la collection">
+          <div class="summary-item">
+            <span>Cartes possédées</span>
+            <strong>{{ ownedUniqueCount() | number }} <small>/ {{ collection.cards().length | number }}</small></strong>
           </div>
-          <div class="completion-block">
-            <div class="completion-heading"><span>Collection complétée</span><strong>{{ completionPercent() }}<small>%</small></strong></div>
-            <div class="progress-track" role="progressbar" [attr.aria-valuenow]="completionPercent()" aria-valuemin="0" aria-valuemax="100" aria-label="Collection complétée">
-              <span [style.width.%]="completionPercent()"></span>
-            </div>
-            <p>{{ ownedUniqueCount() | number }} sur {{ collection.cards().length | number }} cartes uniques</p>
+          <div class="summary-item">
+            <span>Exemplaires</span>
+            <strong>{{ totalCopies() | number }}</strong>
           </div>
-          <div class="overview-seal" aria-hidden="true"><span>R</span><i></i></div>
-        </section>
-
-        <section class="stat-row" aria-label="Statistiques de collection">
-          <article class="stat-card">
-            <span class="stat-label">CARTES POSSÉDÉES</span>
-            <div class="stat-value">{{ ownedUniqueCount() | number }}<small> / {{ collection.cards().length | number }}</small></div>
-            <span class="stat-footnote">références différentes</span>
-          </article>
-          <article class="stat-card">
-            <span class="stat-label">EXEMPLAIRES</span>
-            <div class="stat-value">{{ totalCopies() | number }}</div>
-            <span class="stat-footnote">dans toute la collection</span>
-          </article>
-          <article class="stat-card stat-card-accent">
-            <span class="stat-label">EXTENSIONS</span>
-            <div class="stat-value">{{ extensions().length | number }}</div>
-            <span class="stat-footnote">à explorer</span>
-          </article>
+          <div class="summary-item summary-percent">
+            <span>Complétion</span>
+            <strong>{{ completionPercent() }}%</strong>
+          </div>
+          <div class="progress-track" role="progressbar" [attr.aria-valuenow]="completionPercent()" aria-valuemin="0" aria-valuemax="100" aria-label="Collection complétée">
+            <span [style.width.%]="completionPercent()"></span>
+          </div>
         </section>
 
         <section class="library-section" aria-labelledby="library-title">
           <div class="library-header">
-            <div>
-              <p class="eyebrow"><span class="eyebrow-line"></span> LE CATALOGUE</p>
-              <h2 id="library-title">Parcourir les cartes</h2>
-            </div>
-            <span class="results-count">{{ visibleCards().length | number }} CARTE{{ visibleCards().length === 1 ? '' : 'S' }}</span>
+            <h2 id="library-title">Cartes</h2>
+            <span class="results-count">{{ visibleCards().length | number }}</span>
           </div>
 
           <nav class="extension-tabs" role="tablist" aria-label="Filtrer par extension">
@@ -292,9 +218,7 @@
               [tabIndex]="activeExtension() === 'all' ? 0 : -1"
               (keydown)="onExtensionKeydown($event, 0)"
               (click)="setExtension('all')"
-            >
-              <span>Toutes</span><small>{{ collection.cards().length | number }}</small>
-            </button>
+            >Toutes <small>{{ collection.cards().length | number }}</small></button>
             @for (extension of extensions(); track extension.code) {
               <button
                 type="button"
@@ -305,9 +229,7 @@
                 [tabIndex]="activeExtension() === extension.code ? 0 : -1"
                 (keydown)="onExtensionKeydown($event, $index + 1)"
                 (click)="setExtension(extension.code)"
-              >
-                <span>{{ extension.name }}</span><small>{{ extension.owned }}/{{ extension.total }}</small>
-              </button>
+              >{{ extension.name }} <small>{{ extension.owned }}/{{ extension.total }}</small></button>
             }
           </nav>
 
@@ -316,7 +238,7 @@
               <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.7" cy="8.7" r="5.8" /><path d="m13 13 4 4" /></svg>
               <input
                 type="search"
-                placeholder="Rechercher une carte, un numéro…"
+                placeholder="Rechercher une carte…"
                 aria-label="Rechercher une carte"
                 [ngModel]="searchTerm()"
                 (ngModelChange)="updateSearch($event)"
@@ -330,32 +252,30 @@
             </div>
           </div>
 
+          <div class="card-type-filters" role="group" aria-label="Filtrer par type de carte">
+            @for (typeFilter of cardTypeFilters(); track typeFilter.id) {
+              <button
+                type="button"
+                [class.is-selected]="activeCardType() === typeFilter.id"
+                [attr.aria-pressed]="activeCardType() === typeFilter.id"
+                (click)="setCardTypeFilter(typeFilter.id)"
+              >{{ typeFilter.label }}</button>
+            }
+          </div>
+
           @if (visibleCards().length > 0) {
             <div class="card-grid">
               @for (card of visibleCards(); track card.cardCode) {
                 <article class="collection-card" [class.collection-card-missing]="card.quantity === 0">
                   <div class="card-image-frame">
-                    <div class="card-image-empty" [hidden]="!!card.imageUrl" role="img" aria-label="Illustration indisponible"><span>R</span></div>
+                    <div class="card-image-empty" [hidden]="!!card.imageUrl" role="img" aria-label="Illustration à ajouter"><span>Image à ajouter</span></div>
                     @if (card.imageUrl) {
                       <img [src]="card.imageUrl" [alt]="card.fullName" loading="lazy" (error)="hideBrokenImage($event)" />
                     }
-                    <span class="card-index">{{ card.cardNumber }}</span>
-                    @if (card.quantity > 0) {
-                      <span class="owned-marker"><span>✓</span> DANS LA COLLECTION</span>
-                    }
                   </div>
                   <div class="card-details">
-                    <div class="card-title-row">
-                      <div class="card-name-wrap">
-                        <h3>{{ card.fullName }}</h3>
-                        <span>{{ card.cardType }}</span>
-                      </div>
-                      <span class="rarity-marker" [attr.title]="card.rarity">{{ card.rarity }}</span>
-                    </div>
-                    <div class="card-meta-row">
-                      <span class="domain-label"><i></i>{{ card.domain }}</span>
-                      @if (card.energy !== null) { <span class="energy-label">{{ card.energy }} <small>ÉNERGIE</small></span> }
-                    </div>
+                    <h3 class="card-name">{{ card.fullName }}</h3>
+                    <div class="card-meta-row"><span>{{ card.setCode }} #{{ card.cardNumber }}</span><span>{{ card.cardType }}</span></div>
                     <div class="quantity-control" [attr.aria-label]="'Quantité de ' + card.fullName">
                       <button
                         hlmBtn
@@ -382,17 +302,11 @@
             </div>
           } @else {
             <div class="empty-state">
-              <span class="empty-mark" aria-hidden="true">✳</span>
-              <h3>Aucune carte dans cette sélection</h3>
-              <p>Essaie un autre filtre ou une recherche différente.</p>
+              <h3>Aucune carte</h3>
+              <p>Modifie les filtres ou la recherche.</p>
             </div>
           }
         </section>
-
-        <footer class="collection-footer">
-          <span>RIFTBOUND COLLECTION</span>
-          <span>La collection est liée à {{ auth.user()?.email }} et sauvegardée sur Supabase.</span>
-        </footer>
       </main>
     </div>
   }
