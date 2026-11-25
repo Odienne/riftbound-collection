@@ -19,7 +19,8 @@
           <ol>
             <li>URL du projet Supabase.</li>
             <li>Clé <strong>publishable</strong> du menu Connect.</li>
-            <li>Migration <code>supabase/migrations/202611240001_create_user_collections.sql</code>.</li>
+            <li><code>supabase/migrations/202611240001_create_user_collections.sql</code></li>
+            <li><code>supabase/migrations/202611250001_public_collection_sharing.sql</code></li>
           </ol>
           <p class="setup-note">N’ajoute pas de clé <code>secret</code> ou <code>service_role</code> dans le navigateur.</p>
         </section>
@@ -27,8 +28,24 @@
     </div>
   } @else if (!auth.isReady()) {
     <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Connexion à Supabase…</p></div>
-  } @else if (!auth.user()) {
-    <div class="landing-page">
+  } @else if (isPublicProfile() && publicProfileLoading()) {
+    <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Chargement de la collection…</p></div>
+  } @else if (isPublicProfile() && publicProfileError()) {
+    <div class="setup-page">
+      <header class="topbar">
+        <a class="brand-lockup" href="/" aria-label="Riftbound Collection">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span class="brand-name">Riftbound Collection</span>
+        </a>
+        <span class="readonly-badge">Lecture seule</span>
+      </header>
+      <main class="setup-main">
+        <h1>Collection indisponible</h1>
+        <p class="setup-lead" role="alert">{{ publicProfileError() }}</p>
+      </main>
+    </div>
+  } @else if (!isPublicProfile() && !auth.user()) {
+    <div class="landing-page login-page">
       <header class="topbar">
         <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
           <span class="brand-mark" aria-hidden="true">R</span>
@@ -38,9 +55,8 @@
 
       <main id="top" class="auth-main">
         <div class="auth-layout">
-          <!-- Remplacer ce bloc par une image de présentation. -->
-          <div class="image-placeholder auth-image-placeholder" role="img" aria-label="Emplacement pour une image">
-            <span>Image à ajouter</span>
+          <div class="image-placeholder auth-image-placeholder">
+            <img src="/current.jpg" alt="Illustration Riftbound" />
           </div>
 
           <section class="auth-panel" aria-labelledby="auth-title">
@@ -90,9 +106,9 @@
         </div>
       </main>
     </div>
-  } @else if (!collection.hasLoaded()) {
+  } @else if (!isPublicProfile() && !collection.hasLoaded()) {
     <div class="loading-page"><span class="spinner" aria-hidden="true"></span><p>Chargement de la collection…</p></div>
-  } @else if (collection.loadFailed()) {
+  } @else if (!isPublicProfile() && collection.loadFailed()) {
     <div class="setup-page">
       <header class="topbar">
         <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
@@ -109,7 +125,7 @@
         </button>
       </main>
     </div>
-  } @else if (!collection.isStarted()) {
+  } @else if (!isPublicProfile() && !collection.isStarted()) {
     <div class="landing-page">
       <header class="topbar">
         <a class="brand-lockup" href="#top" aria-label="Riftbound Collection">
@@ -150,34 +166,42 @@
           <span class="brand-name">Riftbound Collection</span>
         </a>
 
-        <div class="collection-actions">
-          <span class="save-indicator" [class.save-indicator-saving]="collection.saveState() === 'saving'" [class.save-indicator-error]="collection.saveState() === 'error'" role="status">
-            @if (collection.saveState() === 'saving') { Sauvegarde… }
-            @else if (collection.saveState() === 'error') { Non sauvegardé }
-            @else { Sauvegardé }
-          </span>
-          <button hlmBtn type="button" variant="outline" class="sync-button" [disabled]="collection.isLoading()" (click)="refreshCatalogue()">
-            <svg viewBox="0 0 20 20" aria-hidden="true" [class.is-spinning]="collection.isLoading()"><path d="M16 9a6.1 6.1 0 0 0-10.7-3L4 7m0-4v4h4m-4 4a6.1 6.1 0 0 0 10.7 3L16 13m0 4v-4h-4" /></svg>
-            <span>{{ collection.isLoading() ? 'Mise à jour…' : 'Actualiser' }}</span>
-          </button>
-          <button hlmBtn type="button" variant="outline" class="export-button" (click)="downloadCollection()">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9m-3 5v3h12v-3" /></svg>
-            <span>Exporter</span>
-          </button>
-          <button hlmBtn type="button" variant="outline" class="signout-button" (click)="signOut()">Quitter</button>
-        </div>
+        @if (isPublicProfile()) {
+          <span class="readonly-badge">Lecture seule</span>
+        } @else {
+          <div class="collection-actions">
+            <span class="save-indicator" [class.save-indicator-saving]="collection.saveState() === 'saving'" [class.save-indicator-error]="collection.saveState() === 'error'" role="status">
+              @if (collection.saveState() === 'saving') { Sauvegarde… }
+              @else if (collection.saveState() === 'error') { Non sauvegardé }
+              @else { Sauvegardé }
+            </span>
+            <button hlmBtn type="button" variant="outline" class="sync-button" [disabled]="collection.isLoading()" (click)="refreshCatalogue()">
+              <svg viewBox="0 0 20 20" aria-hidden="true" [class.is-spinning]="collection.isLoading()"><path d="M16 9a6.1 6.1 0 0 0-10.7-3L4 7m0-4v4h4m-4 4a6.1 6.1 0 0 0 10.7 3L16 13m0 4v-4h-4" /></svg>
+              <span>{{ collection.isLoading() ? 'Mise à jour…' : 'Actualiser' }}</span>
+            </button>
+            <button hlmBtn type="button" variant="outline" class="export-button" (click)="downloadCollection()">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9m-3 5v3h12v-3" /></svg>
+              <span>Exporter</span>
+            </button>
+            <button hlmBtn type="button" variant="outline" class="signout-button" (click)="signOut()">Se déconnecter</button>
+          </div>
+        }
       </header>
 
       <main id="top" class="dashboard-main">
         <section class="dashboard-heading">
-          <h1>Ma collection</h1>
+          <h1>{{ isPublicProfile() ? 'Collection publique' : 'Ma collection' }}</h1>
           <div class="catalogue-date">
             <span class="catalogue-date-label">Catalogue synchronisé</span>
-            <strong>{{ collection.snapshot()?.lastSyncedAt | date: 'd MMM yyyy' }}</strong>
+            @if (isPublicProfile()) {
+              <strong>{{ publicProfileSnapshot()?.lastSyncedAt | date: 'd MMM yyyy' }}</strong>
+            } @else {
+              <strong>{{ collection.snapshot()?.lastSyncedAt | date: 'd MMM yyyy' }}</strong>
+            }
           </div>
         </section>
 
-        @if (collection.loadError() || collection.saveError()) {
+        @if (!isPublicProfile() && (collection.loadError() || collection.saveError())) {
           <div class="sync-notice" role="status">
             <span class="notice-symbol" aria-hidden="true">!</span>
             <span>{{ collection.saveError() ?? collection.loadError() }}</span>
@@ -187,7 +211,7 @@
         <section class="collection-summary" aria-label="Résumé de la collection">
           <div class="summary-item">
             <span>Cartes possédées</span>
-            <strong>{{ ownedUniqueCount() | number }} <small>/ {{ collection.cards().length | number }}</small></strong>
+            <strong>{{ ownedUniqueCount() | number }} <small>/ {{ displayCards().length | number }}</small></strong>
           </div>
           <div class="summary-item">
             <span>Exemplaires</span>
@@ -201,6 +225,36 @@
             <span [style.width.%]="completionPercent()"></span>
           </div>
         </section>
+
+        @if (!isPublicProfile()) {
+          <section class="share-panel" aria-label="Partage public">
+            <div class="share-detail">
+              <strong>Partage public</strong>
+              <span>Toute personne avec le lien peut consulter les quantités.</span>
+              @if (collection.isPublic() && publicShareUrl()) {
+                <a [href]="publicShareUrl()" target="_blank" rel="noopener noreferrer">{{ publicShareUrl() }}</a>
+              } @else {
+                <span>{{ collection.isPublic() ? 'Préparation du lien…' : 'Désactivé' }}</span>
+              }
+              @if (collection.shareError()) { <small class="share-error" role="alert">{{ collection.shareError() }}</small> }
+              @if (shareCopyError()) { <small class="share-error" role="alert">{{ shareCopyError() }}</small> }
+            </div>
+            <div class="share-buttons">
+              @if (collection.isPublic()) {
+                <button type="button" class="share-button" [disabled]="collection.shareBusy()" (click)="copyShareLink()">
+                  {{ shareCopied() ? 'Lien copié' : 'Copier le lien' }}
+                </button>
+                <button type="button" class="share-button share-button-muted" [disabled]="collection.shareBusy()" (click)="setPublicSharing(false)">
+                  {{ collection.shareBusy() ? 'Mise à jour…' : 'Désactiver' }}
+                </button>
+              } @else {
+                <button type="button" class="share-button" [disabled]="collection.shareBusy() || !collection.shareId()" (click)="setPublicSharing(true)">
+                  {{ collection.shareBusy() ? 'Création…' : 'Créer un lien public' }}
+                </button>
+              }
+            </div>
+          </section>
+        }
 
         <section class="library-section" aria-labelledby="library-title">
           <div class="library-header">
@@ -218,7 +272,7 @@
               [tabIndex]="activeExtension() === 'all' ? 0 : -1"
               (keydown)="onExtensionKeydown($event, 0)"
               (click)="setExtension('all')"
-            >Toutes <small>{{ collection.cards().length | number }}</small></button>
+            >Toutes <small>{{ displayCards().length | number }}</small></button>
             @for (extension of extensions(); track extension.code) {
               <button
                 type="button"
@@ -246,9 +300,9 @@
             </label>
 
             <div class="view-filters" role="group" aria-label="Filtrer par possession">
-              <button type="button" [class.is-selected]="activeFilter() === 'all'" [attr.aria-pressed]="activeFilter() === 'all'" (click)="setFilter('all')">Toutes <span>{{ collection.cards().length }}</span></button>
+              <button type="button" [class.is-selected]="activeFilter() === 'all'" [attr.aria-pressed]="activeFilter() === 'all'" (click)="setFilter('all')">Toutes <span>{{ displayCards().length }}</span></button>
               <button type="button" [class.is-selected]="activeFilter() === 'owned'" [attr.aria-pressed]="activeFilter() === 'owned'" (click)="setFilter('owned')">Possédées <span>{{ ownedUniqueCount() }}</span></button>
-              <button type="button" [class.is-selected]="activeFilter() === 'missing'" [attr.aria-pressed]="activeFilter() === 'missing'" (click)="setFilter('missing')">Manquantes <span>{{ collection.cards().length - ownedUniqueCount() }}</span></button>
+              <button type="button" [class.is-selected]="activeFilter() === 'missing'" [attr.aria-pressed]="activeFilter() === 'missing'" (click)="setFilter('missing')">Manquantes <span>{{ displayCards().length - ownedUniqueCount() }}</span></button>
             </div>
           </div>
 
@@ -276,7 +330,10 @@
                   <div class="card-details">
                     <h3 class="card-name">{{ card.fullName }}</h3>
                     <div class="card-meta-row"><span>{{ card.setCode }} #{{ card.cardNumber }}</span><span>{{ card.cardType }}</span></div>
-                    <div class="quantity-control" [attr.aria-label]="'Quantité de ' + card.fullName">
+                    @if (isPublicProfile()) {
+                      <div class="readonly-quantity" [attr.aria-label]="card.quantity + ' exemplaire(s) de ' + card.fullName">× {{ card.quantity }}</div>
+                    } @else {
+                      <div class="quantity-control" [attr.aria-label]="'Quantité de ' + card.fullName">
                       <button
                         hlmBtn
                         type="button"
@@ -295,7 +352,8 @@
                         [attr.aria-label]="'Ajouter un exemplaire de ' + card.fullName"
                         (click)="changeQuantity(card, 1)"
                       >+</button>
-                    </div>
+                      </div>
+                    }
                   </div>
                 </article>
               }

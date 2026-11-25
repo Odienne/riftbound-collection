@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { CollectionService } from './services/collection.service';
 import { SupabaseAuthService } from './services/supabase-auth.service';
-import type { CollectionCard, RiftboundExtension } from './models/card.model';
+import type { CollectionCard, CollectionSnapshot, RiftboundExtension } from './models/card.model';
 
 type CollectionFilter = 'all' | 'owned' | 'missing';
 
@@ -33,11 +33,33 @@ export class App implements OnInit {
   protected readonly password = signal('');
   protected readonly authError = signal<string | null>(null);
   protected readonly authMessage = signal<string | null>(null);
+  protected readonly publicShareId = signal<string | null>(null);
+  protected readonly publicProfileSnapshot = signal<CollectionSnapshot | null>(null);
+  protected readonly publicProfileLoading = signal(false);
+  protected readonly publicProfileError = signal<string | null>(null);
+  protected readonly shareCopied = signal(false);
+  protected readonly shareCopyError = signal<string | null>(null);
+  protected readonly isPublicProfile = computed(() => this.publicShareId() !== null);
+  protected readonly publicShareUrl = computed(() => {
+    const shareId = this.collection.shareId();
+    if (!shareId) return null;
+
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('share', shareId);
+    return url.toString();
+  });
+  protected readonly displayCards = computed(() =>
+    this.isPublicProfile()
+      ? this.publicProfileSnapshot()?.cards ?? []
+      : this.collection.cards(),
+  );
 
   protected readonly extensions = computed<RiftboundExtension[]>(() => {
     const summary = new Map<string, RiftboundExtension>();
 
-    for (const card of this.collection.cards()) {
+    for (const card of this.displayCards()) {
       const extension = summary.get(card.setCode) ?? {
         code: card.setCode,
         name: card.cardSet,
@@ -53,7 +75,7 @@ export class App implements OnInit {
   });
 
   protected readonly cardTypeFilters = computed<CardTypeFilter[]>(() => {
-    const cards = this.collection.cards();
+    const cards = this.displayCards();
     const types = new Set(cards.map((card) => card.cardType.trim()).filter(Boolean));
     const filters: CardTypeFilter[] = [{ id: 'all', label: 'Tous les types' }];
     const addType = (match: RegExp, label: string) => {
@@ -91,13 +113,13 @@ export class App implements OnInit {
   });
 
   protected readonly ownedUniqueCount = computed(
-    () => this.collection.cards().filter((card) => card.quantity > 0).length,
+    () => this.displayCards().filter((card) => card.quantity > 0).length,
   );
   protected readonly totalCopies = computed(() =>
-    this.collection.cards().reduce((sum, card) => sum + card.quantity, 0),
+    this.displayCards().reduce((sum, card) => sum + card.quantity, 0),
   );
   protected readonly completionPercent = computed(() => {
-    const total = this.collection.cards().length;
+    const total = this.displayCards().length;
     return total ? Math.round((this.ownedUniqueCount() / total) * 100) : 0;
   });
 
@@ -107,8 +129,7 @@ export class App implements OnInit {
     const selectedType = this.cardTypeFilters().find((item) => item.id === this.activeCardType());
     const query = this.searchTerm().trim().toLocaleLowerCase('fr');
 
-    return this.collection
-      .cards()
+    return this.displayCards()
       .filter((card) => extensionCode === 'all' || card.setCode === extensionCode)
       .filter((card) => {
         if (!selectedType || selectedType.id === 'all') return true;
@@ -134,7 +155,28 @@ export class App implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    const shareId = new URLSearchParams(window.location.search).get('share');
+    if (shareId !== null) this.publicShareId.set(shareId);
+
     await this.auth.initialize();
+
+    if (shareId !== null) {
+      if (!/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(shareId)) {
+        this.publicProfileError.set('Ce lien de collection est invalide.');
+        return;
+      }
+
+      this.publicProfileLoading.set(true);
+      try {
+        this.publicProfileSnapshot.set(await this.collection.fetchPublicCollection(shareId));
+      } catch {
+        this.publicProfileError.set('Cette collection est introuvable ou son partage a été désactivé.');
+      } finally {
+        this.publicProfileLoading.set(false);
+      }
+      return;
+    }
+
     const user = this.auth.user();
     if (user) {
       await this.collection.loadForUser(user.id);
@@ -211,6 +253,28 @@ export class App implements OnInit {
 
   protected setCardTypeFilter(filterId: string): void {
     this.activeCardType.set(filterId);
+  }
+
+  protected async setPublicSharing(enabled: boolean): Promise<void> {
+    this.shareCopied.set(false);
+    this.shareCopyError.set(null);
+    await this.collection.setPublicSharing(enabled);
+  }
+
+  protected async copyShareLink(): Promise<void> {
+    const url = this.publicShareUrl();
+    if (!url) return;
+
+    this.shareCopied.set(false);
+    this.shareCopyError.set(null);
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(url);
+      this.shareCopied.set(true);
+      window.setTimeout(() => this.shareCopied.set(false), 2200);
+    } catch {
+      this.shareCopyError.set('La copie automatique est indisponible. Sélectionne le lien pour le copier.');
+    }
   }
 
   private isChampionUnit(card: CollectionCard): boolean {

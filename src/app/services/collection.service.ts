@@ -32,6 +32,10 @@ export class CollectionService {
   readonly loadError = signal<string | null>(null);
   readonly saveState = signal<SaveState>('idle');
   readonly saveError = signal<string | null>(null);
+  readonly shareId = signal<string | null>(null);
+  readonly isPublic = signal(false);
+  readonly shareBusy = signal(false);
+  readonly shareError = signal<string | null>(null);
 
   private userId: string | null = null;
   private loadVersion = 0;
@@ -52,6 +56,10 @@ export class CollectionService {
     this.loadError.set(null);
     this.saveError.set(null);
     this.saveState.set('idle');
+    this.shareId.set(null);
+    this.isPublic.set(false);
+    this.shareBusy.set(false);
+    this.shareError.set(null);
 
     const client = this.auth.client;
     if (!client) {
@@ -64,12 +72,15 @@ export class CollectionService {
     try {
       const { data, error } = await client
         .from('user_collections')
-        .select('collection')
+        .select('collection, share_id, is_public')
         .eq('user_id', userId)
         .maybeSingle();
 
       if (error) throw error;
       if (loadVersion !== this.loadVersion) return;
+
+      this.shareId.set(data?.share_id ?? null);
+      this.isPublic.set(data?.is_public ?? false);
 
       if (data?.collection) {
         const saved = data.collection as CollectionSnapshot;
@@ -83,7 +94,7 @@ export class CollectionService {
       if (loadVersion === this.loadVersion) {
         this.loadFailed.set(true);
         this.loadError.set(
-          'Impossible de charger la collection du compte. Vérifie la table et les politiques RLS Supabase, puis réessaie.',
+          'Impossible de charger la collection. Vérifie les migrations Supabase et les politiques RLS, puis réessaie.',
         );
       }
     } finally {
@@ -106,6 +117,10 @@ export class CollectionService {
     this.loadError.set(null);
     this.saveError.set(null);
     this.saveState.set('idle');
+    this.shareId.set(null);
+    this.isPublic.set(false);
+    this.shareBusy.set(false);
+    this.shareError.set(null);
   }
 
   async startCollection(): Promise<void> {
@@ -217,6 +232,55 @@ export class CollectionService {
     this.scheduleSave();
   }
 
+  async setPublicSharing(enabled: boolean): Promise<void> {
+    const userId = this.userId;
+    const client = this.auth.client;
+    if (!userId || !client || this.shareBusy()) return;
+
+    this.shareBusy.set(true);
+    this.shareError.set(null);
+    try {
+      if (enabled) await this.flushPendingSave();
+      if (userId !== this.userId) return;
+
+      const update = enabled
+        ? { is_public: true, share_id: crypto.randomUUID() }
+        : { is_public: false };
+      const { data, error } = await client
+        .from('user_collections')
+        .update(update)
+        .eq('user_id', userId)
+        .select('share_id, is_public')
+        .single();
+
+      if (error) throw error;
+      if (userId === this.userId) {
+        this.shareId.set(data.share_id);
+        this.isPublic.set(data.is_public);
+      }
+    } catch {
+      if (userId === this.userId) {
+        this.shareError.set('Le réglage du partage n’a pas pu être sauvegardé. Vérifie la migration Supabase puis réessaie.');
+      }
+    } finally {
+      if (userId === this.userId) this.shareBusy.set(false);
+    }
+  }
+
+  async fetchPublicCollection(shareId: string): Promise<CollectionSnapshot> {
+    const client = this.auth.client;
+    if (!client) throw new Error('Supabase n’est pas configuré.');
+
+    const { data, error } = await client.rpc('get_public_collection', { p_share_id: shareId });
+    if (error) throw error;
+
+    const snapshot = data as unknown as CollectionSnapshot | null;
+    if (!snapshot || snapshot.version !== 1 || !Array.isArray(snapshot.cards)) {
+      throw new Error('Cette collection n’est pas disponible.');
+    }
+    return snapshot;
+  }
+
   async flushPendingSave(): Promise<void> {
     const userId = this.userId;
     const snapshot = this.snapshot();
@@ -260,15 +324,19 @@ export class CollectionService {
     if (!client) throw new Error('Supabase is not configured.');
 
     const queuedSave = this.saveQueue.catch(() => undefined).then(async () => {
-      const { error } = await client.from('user_collections').upsert(
+      const { data, error } = await client.from('user_collections').upsert(
         {
           user_id: userId,
           collection: snapshot,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id' },
-      );
+      ).select('share_id, is_public').single();
       if (error) throw error;
+      if (userId === this.userId && !this.shareId()) {
+        this.shareId.set(data.share_id);
+        this.isPublic.set(data.is_public);
+      }
     });
     this.saveQueue = queuedSave;
 

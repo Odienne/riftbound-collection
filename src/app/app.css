@@ -25,6 +25,15 @@
 .collection-page,
 .setup-page { min-height: 100vh; }
 
+.login-page {
+  background-image:
+    linear-gradient(120deg, rgb(246 248 252 / 34%), rgb(245 247 252 / 18%)),
+    url('/main-bg.jpg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -82,6 +91,10 @@
 .image-placeholder::before { top: 14%; left: 13%; }
 .image-placeholder::after { right: 12%; bottom: 10%; width: 260px; height: 260px; }
 .image-placeholder span { position: relative; z-index: 1; padding: 9px 13px; border: 1px solid rgb(255 255 255 / 76%); border-radius: 999px; background: rgb(255 255 255 / 64%); color: #667493; font-size: 12px; backdrop-filter: blur(12px); }
+.auth-image-placeholder { padding: 0; background: #e5eafa; }
+.auth-image-placeholder::before,
+.auth-image-placeholder::after { display: none; }
+.auth-image-placeholder img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .auth-panel,
 .start-panel,
@@ -142,6 +155,7 @@ button.primary-cta[hlmBtn]:disabled { opacity: 0.65; }
 .account-actions,
 .collection-actions { display: flex; align-items: center; gap: 9px; }
 .account-email { max-width: 240px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.readonly-badge { padding: 8px 12px; border: 1px solid rgb(111 117 218 / 18%); border-radius: 999px; background: rgb(255 255 255 / 70%); color: #6355be; font-size: 11px; font-weight: 650; }
 button.signout-button[hlmBtn],
 button.sync-button[hlmBtn],
 button.export-button[hlmBtn] {
@@ -214,6 +228,18 @@ button.export-button[hlmBtn]:hover:not(:disabled) { border-color: rgb(111 117 21
 .summary-percent strong { color: #715bd5; }
 .progress-track { grid-column: 1 / -1; height: 7px; overflow: hidden; border-radius: 999px; background: #e8edf8; }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f0a9a0, #a783ed 52%, #66b6ea); transition: width 300ms ease; }
+.share-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding: 13px 16px; border: 1px solid rgb(255 255 255 / 80%); border-radius: 15px; background: rgb(255 255 255 / 52%); box-shadow: 0 10px 28px rgb(58 74 120 / 5%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.share-detail { display: grid; min-width: 0; gap: 4px; }
+.share-detail strong { color: #405070; font-size: 12px; }
+.share-detail > span { color: #8995ab; font-size: 11px; }
+.share-detail a { max-width: min(64vw, 660px); overflow-wrap: anywhere; color: #6558c6; font-size: 11px; }
+.share-detail small { color: #bd4d5b; font-size: 10px; line-height: 1.4; }
+.share-buttons { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; }
+.share-button { min-height: 34px; padding: 0 12px; border: 1px solid rgb(111 117 218 / 16%); border-radius: 10px; background: linear-gradient(110deg, #eee9ff, #e7f0ff); color: #5d50bd; cursor: pointer; font: inherit; font-size: 11px; font-weight: 650; }
+.share-button:hover:not(:disabled) { background: linear-gradient(110deg, #e7e0ff, #dfeaff); }
+.share-button:disabled { cursor: wait; opacity: 0.65; }
+.share-button-muted { border-color: rgb(111 133 182 / 16%); background: rgb(255 255 255 / 70%); color: #74809a; }
+.share-button-muted:hover:not(:disabled) { background: white; color: #4d5d7b; }
 
 .library-section { padding-top: 37px; }
 .library-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
@@ -267,6 +293,7 @@ button.export-button[hlmBtn]:hover:not(:disabled) { border-color: rgb(111 117 21
 .quantity-control button[hlmBtn]:disabled { color: #b1b9c8; opacity: 0.8; }
 .quantity-number { color: #33415e; font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 650; text-align: center; }
 .collection-card-missing .quantity-number { color: #8793a8; }
+.readonly-quantity { display: flex; height: 34px; align-items: center; justify-content: center; margin-top: 4px; border: 1px solid rgb(111 133 182 / 12%); border-radius: 11px; background: rgb(248 250 255 / 55%); color: #667493; font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 650; }
 .empty-state { display: flex; min-height: 180px; flex-direction: column; align-items: center; justify-content: center; padding: 28px; border-radius: 18px; text-align: center; }
 .empty-state h3 { margin: 0 0 5px; color: #465572; font-size: 16px; font-weight: 650; }
 .empty-state p { margin: 0; color: #8390a8; font-size: 12px; }
@@ -300,6 +327,10 @@ button.export-button[hlmBtn]:hover:not(:disabled) { border-color: rgb(111 117 21
   .brand-mark { width: 31px; height: 31px; }
   .account-actions { gap: 6px; }
   .account-email { display: none; }
+  .share-panel { align-items: stretch; flex-direction: column; }
+  .share-detail a { max-width: calc(100vw - 70px); }
+  .share-buttons { width: 100%; }
+  .share-buttons .share-button { flex: 1; }
   .collection-topbar { height: 62px; }
   .collection-actions { gap: 5px; }
   .save-indicator { min-width: 0; font-size: 9px; }
