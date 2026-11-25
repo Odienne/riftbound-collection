@@ -12,6 +12,82 @@ export interface AuthResult {
   confirmationRequired: boolean;
 }
 
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 400;
+const AUTH_COOKIE_CHUNK_SIZE = 3000;
+
+function createCookieStorage() {
+  const readCookies = (): Map<string, string> => {
+    const cookies = new Map<string, string>();
+    for (const part of document.cookie.split(';')) {
+      const separator = part.indexOf('=');
+      if (separator < 0) continue;
+      cookies.set(part.slice(0, separator).trim(), part.slice(separator + 1));
+    }
+    return cookies;
+  };
+
+  const writeCookie = (name: string, value: string, maxAge: number): void => {
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${name}=${value}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+  };
+
+  const removeItem = (key: string): void => {
+    const chunkPrefix = `${key}.`;
+    for (const name of readCookies().keys()) {
+      const suffix = name.startsWith(chunkPrefix) ? name.slice(chunkPrefix.length) : '';
+      if (name === key || /^\d+$/.test(suffix)) writeCookie(name, '', 0);
+    }
+  };
+
+  return {
+    getItem(key: string): string | null {
+      const cookies = readCookies();
+      const directValue = cookies.get(key);
+      if (directValue !== undefined) {
+        try {
+          return decodeURIComponent(directValue);
+        } catch {
+          return null;
+        }
+      }
+
+      const chunkPrefix = `${key}.`;
+      const chunks = [...cookies.entries()]
+        .flatMap(([name, value]) => {
+          if (!name.startsWith(chunkPrefix)) return [];
+          const index = name.slice(chunkPrefix.length);
+          return /^\d+$/.test(index) ? [{ index: Number(index), value }] : [];
+        })
+        .sort((left, right) => left.index - right.index);
+
+      if (!chunks.length || chunks.some((chunk, index) => chunk.index !== index)) return null;
+      try {
+        return decodeURIComponent(chunks.map((chunk) => chunk.value).join(''));
+      } catch {
+        return null;
+      }
+    },
+
+    setItem(key: string, value: string): void {
+      removeItem(key);
+      const encodedValue = encodeURIComponent(value);
+      if (encodedValue.length <= AUTH_COOKIE_CHUNK_SIZE) {
+        writeCookie(key, encodedValue, AUTH_COOKIE_MAX_AGE_SECONDS);
+        return;
+      }
+
+      for (let offset = 0, index = 0; offset < encodedValue.length; offset += AUTH_COOKIE_CHUNK_SIZE, index += 1) {
+        writeCookie(
+          `${key}.${index}`,
+          encodedValue.slice(offset, offset + AUTH_COOKIE_CHUNK_SIZE),
+          AUTH_COOKIE_MAX_AGE_SECONDS,
+        );
+      }
+    },
+    removeItem,
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class SupabaseAuthService {
   private clientInstance: SupabaseClient | null = null;
@@ -88,9 +164,26 @@ export class SupabaseAuthService {
     }
 
     try {
+      const supabaseUrl = environment.supabaseUrl.trim();
+      const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+      const cookieStorage = createCookieStorage();
+
+      // Carry the current tab's session across this storage change without asking for another login.
+      try {
+        const previousSession = window.sessionStorage.getItem(storageKey);
+        if (previousSession && !cookieStorage.getItem(storageKey)) {
+          cookieStorage.setItem(storageKey, previousSession);
+        }
+        if (previousSession) window.sessionStorage.removeItem(storageKey);
+      } catch {
+        // Session storage can be unavailable in restricted browser contexts.
+      }
+
       this.clientInstance = createClient(environment.supabaseUrl.trim(), environment.supabaseKey.trim(), {
         auth: {
-          storage: window.sessionStorage,
+          storage: cookieStorage,
+          storageKey,
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
